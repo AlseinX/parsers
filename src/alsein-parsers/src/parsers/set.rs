@@ -1,13 +1,9 @@
-use std::{
-    marker::PhantomData,
-    mem,
-    ops::{Deref, Index},
-};
+use std::ops::Deref;
 
 pub trait Set: 'static {
     type Output;
     fn len(&self) -> usize;
-    fn get<'a>(&'a self, idx: usize) -> &'a Self::Output;
+    fn get(&self, idx: usize) -> &Self::Output;
 }
 
 impl<T: 'static> Set for [T] {
@@ -17,7 +13,7 @@ impl<T: 'static> Set for [T] {
         self.len()
     }
 
-    fn get<'a>(&'a self, idx: usize) -> &'a Self::Output {
+    fn get(&self, idx: usize) -> &Self::Output {
         &self[idx]
     }
 }
@@ -29,7 +25,7 @@ impl<S: Set + ?Sized, D: Deref<Target = S> + 'static> Set for D {
         self.deref().len()
     }
 
-    fn get<'a>(&'a self, idx: usize) -> &'a Self::Output {
+    fn get(&self, idx: usize) -> &Self::Output {
         self.deref().get(idx)
     }
 }

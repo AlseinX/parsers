@@ -1,7 +1,7 @@
 use std::{
     fmt::{Debug, Display},
     marker::PhantomData,
-    ops::{Add, BitOr, Deref, Range},
+    ops::{Add, BitOr, Deref, Not, Range},
 };
 
 use crate::pool::Pool;
@@ -172,11 +172,23 @@ impl<'a, I: Set + ?Sized, R: RawParser<I> + ?Sized> Parser<'a, I, R> {
             self.raw.parse(input, start).map(|(v, end)| (f(v), end))
         })
     }
+}
 
-    pub fn discard(&'a self) -> Matcher<'a, I, impl RawParser<I, Output = ()> + 'a> {
-        Matcher(self.context.new_parser(move |input: &I, start| {
-            self.raw.parse(input, start).map(|(_, end)| ((), end))
-        }))
+#[derive(Clone, Copy)]
+pub struct Discard<'a, I: Set + ?Sized, R: RawParser<I> + ?Sized + 'a>(Parser<'a, I, R>);
+
+impl<'a, I: Set + ?Sized, R: RawParser<I> + ?Sized> Not for Parser<'a, I, R> {
+    type Output = Matcher<'a, I, Discard<'a, I, R>>;
+
+    fn not(self) -> Self::Output {
+        Matcher(self.context.new_parser(Discard(self)))
+    }
+}
+
+impl<'a, I: Set + ?Sized, R: RawParser<I> + ?Sized + 'a> RawParser<I> for Discard<'a, I, R> {
+    type Output = ();
+    fn parse(&self, input: &I, start: usize) -> ParserResult<Self::Output> {
+        self.0.raw.parse(input, start).map(|(_, end)| ((), end))
     }
 }
 
@@ -409,7 +421,7 @@ mod test {
         };
         let a = parser.a();
         let b = parser.a();
-        let c = a + b.discard();
+        let c = a + !b;
         let d = c.into_dyn();
         let x = c.parse(&chars).unwrap();
     }
